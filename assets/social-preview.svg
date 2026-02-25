@@ -1,0 +1,68 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="640" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F1F7F4"/>
+      <stop offset="1" stop-color="#F8FBFA"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#FFFFFF" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.88"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#14B88D"/>
+      <stop offset="1" stop-color="#0F8E6E"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1280" height="640" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#11312A" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <circle cx="102" cy="93" r="110" fill="#E5F3ED"/>
+  <circle cx="1200" cy="40" r="130" fill="#EAF7F2"/>
+  <circle cx="1160" cy="590" r="180" fill="#EEF8F4"/>
+
+  <g filter="url(#shadow)">
+    <rect x="80" y="72" width="1120" height="496" rx="28" fill="url(#card)"/>
+  </g>
+
+  <rect x="120" y="116" width="280" height="40" rx="20" fill="#E8F6F1"/>
+  <text x="140" y="143" font-family="SF Pro Display, PingFang SC, Segoe UI, Arial" font-size="20" font-weight="700" fill="#0F8E6E">Typeless Lite</text>
+
+  <text x="120" y="225" font-family="SF Pro Display, PingFang SC, Segoe UI, Arial" font-size="56" font-weight="740" fill="#102821">
+    Daily Transcript Summary,
+  </text>
+  <text x="120" y="288" font-family="SF Pro Display, PingFang SC, Segoe UI, Arial" font-size="56" font-weight="740" fill="#102821">
+    in One Click.
+  </text>
+
+  <text x="120" y="360" font-family="SF Pro Text, PingFang SC, Segoe UI, Arial" font-size="24" font-weight="500" fill="#41605A">
+    Auto-detect Typeless data • Copy by day • Export Markdown / PDF / Raw
+  </text>
+
+  <rect x="120" y="420" width="250" height="58" rx="16" fill="url(#accent)"/>
+  <text x="152" y="456" font-family="SF Pro Text, PingFang SC, Segoe UI, Arial" font-size="23" font-weight="670" fill="#FFFFFF">Built for Daily Workflow</text>
+
+  <g>
+    <rect x="740" y="132" width="400" height="388" rx="24" fill="#FFFFFF" stroke="#E1ECE8"/>
+    <rect x="774" y="174" width="152" height="28" rx="14" fill="#EAF7F2"/>
+    <text x="792" y="194" font-family="SF Pro Text, PingFang SC, Segoe UI, Arial" font-size="14" font-weight="700" fill="#0F8E6E">2026-02-25</text>
+
+    <rect x="774" y="224" width="332" height="74" rx="14" fill="#F7FAF9" stroke="#E7EFEC"/>
+    <text x="792" y="248" font-family="SF Pro Text, PingFang SC, Segoe UI, Arial" font-size="13" font-weight="700" fill="#0F8E6E">10:12:31</text>
+    <text x="792" y="272" font-family="SF Pro Text, PingFang SC, Segoe UI, Arial" font-size="13" fill="#2D4A44">整理今天的工作重点并输出日报草稿</text>
+
+    <rect x="774" y="312" width="332" height="74" rx="14" fill="#F7FAF9" stroke="#E7EFEC"/>
+    <text x="792" y="336" font-family="SF Pro Text, PingFang SC, Segoe UI, Arial" font-size="13" font-weight="700" fill="#0F8E6E">14:48:05</text>
+    <text x="792" y="360" font-family="SF Pro Text, PingFang SC, Segoe UI, Arial" font-size="13" fill="#2D4A44">补充会议纪要与明日待办事项</text>
+
+    <rect x="774" y="412" width="116" height="36" rx="10" fill="#E9F8F3"/>
+    <text x="797" y="435" font-family="SF Pro Text, PingFang SC, Segoe UI, Arial" font-size="13" font-weight="700" fill="#0F8E6E">Copy Day</text>
+
+    <rect x="902" y="412" width="86" height="36" rx="10" fill="#F0F6FF"/>
+    <text x="924" y="435" font-family="SF Pro Text, PingFang SC, Segoe UI, Arial" font-size="13" font-weight="700" fill="#3A63B7">MD</text>
+
+    <rect x="998" y="412" width="56" height="36" rx="10" fill="#F0F6FF"/>
+    <text x="1013" y="435" font-family="SF Pro Text, PingFang SC, Segoe UI, Arial" font-size="13" font-weight="700" fill="#3A63B7">PDF</text>
+  </g>
+</svg>

@@ -1,66 +1,131 @@
 # Typeless Lite
 
-一个极简本地桌面工具：自动读取 Typeless 转录记录，按日期查看、复制、导出。
+A minimal local desktop app to turn Typeless voice transcripts into daily summaries.
 
-## 痛点
+![Typeless Lite Social Preview](./assets/social-preview.png)
 
-很多人用 Typeless 做语音输入来管理工作，但在“整理每天内容”这一步会卡住：
+## 中文说明
 
-- 官方暂时没有便捷的按日复制/导出流程。
-- 转录内容虽然在本地，但路径和格式不直观，不方便直接拿来做日报/复盘。
-- 手动逐条复制成本高，容易漏内容。
+### 这是什么
 
-## 解决方法
+Typeless Lite 是一个本地桌面工具，自动读取 Typeless 转录内容，按日期整理，支持一键复制和导出。
 
-Typeless Lite 把这件事简化为三步：
+### 痛点
 
-1. 自动识别本机 Typeless 数据库（失败时支持手动选择）。
-2. 自动按日期和时间点整理全部转录内容。
-3. 一键复制当天对话，或导出为 Markdown / PDF / Raw。
+用语音输入管理工作很高效，但“每天总结”通常很低效：
 
-## 核心功能
+- 官方暂时没有便捷的按日复制/导出方式。
+- 数据在本地，但路径和结构不直观。
+- 手动逐条复制容易漏、耗时长。
 
-- 自动识别 `typeless.db` 路径
-- 日期 + 时间线浏览转录内容
+### 解决方法
+
+Typeless Lite 把流程压缩为 3 步：
+
+1. 自动识别本机 Typeless 数据库（失败时可手动选择）。
+2. 自动按日期和时间点组织转录内容。
+3. 一键复制当天内容，或导出为 Markdown / PDF / Raw。
+
+### 核心功能
+
+- 自动识别 `typeless.db`
+- 日期 + 时间线浏览
 - 一键复制“选定日期全部对话”
-- 导出 Markdown（适合继续编辑）
-- 导出 PDF（适合分享/存档）
+- 导出 Markdown（编辑友好）
+- 导出 PDF（分享友好）
 - 导出 Raw（`JSON + typeless.db.backup`）
 
-## 隐私与数据
+### 隐私说明
 
 - 全程本地处理，不上传云端。
-- 默认只读取本机 Typeless 数据。
-- 导出文件保存到你指定的位置。
+- 默认只读取你本机的 Typeless 数据。
 
-## 快速开始
+### 本地打开（开发模式）
 
 ```bash
+cd "/Users/alexmac/Documents/Mini 项目开发/typeless-lite"
 npm install
 npm run dev
 ```
 
-## 打包
+### 本地打开（打包版）
+
+1. 解压 `release/Typeless Lite-0.1.0-arm64-mac.zip`
+2. 双击 `Typeless Lite.app`
+
+### 打包
 
 ```bash
 npm run dist:mac
 ```
 
-产物输出目录：`release/`
+输出目录：`release/`
 
-## 使用流程
+### GitHub 社交封面
 
-1. 启动应用后自动扫描 Typeless 数据。
-2. 左侧选择日期，右侧查看该日完整时间线。
-3. 点击“复制当天”或“导出”完成整理。
+- 封面文件：`assets/social-preview.png`
+- 设置路径：GitHub 仓库 `Settings` -> `General` -> `Social preview` -> `Upload an image`
 
-快捷键：
+## English
 
-- `⌘/Ctrl + Shift + C`：复制当前日期全部对话
+### What It Is
 
-## 技术栈
+Typeless Lite is a local desktop app that automatically reads Typeless transcripts, groups them by day, and lets you copy or export in one click.
+
+### The Problem
+
+Voice input is fast, but daily review is not:
+
+- No convenient official daily copy/export flow.
+- Data is local, but hard to access directly.
+- Manual copy is slow and error-prone.
+
+### The Solution
+
+Typeless Lite reduces the workflow to 3 steps:
+
+1. Auto-detect Typeless database (manual fallback included).
+2. Organize transcripts by date and timestamp.
+3. Copy a full day instantly, or export as Markdown / PDF / Raw.
+
+### Features
+
+- Auto-detect `typeless.db`
+- Date + timeline view
+- One-click copy for selected day
+- Markdown export
+- PDF export
+- Raw export (`JSON + typeless.db.backup`)
+
+### Privacy
+
+- 100% local processing.
+- No cloud upload by default.
+
+### Run Locally (Dev)
+
+```bash
+cd "/Users/alexmac/Documents/Mini 项目开发/typeless-lite"
+npm install
+npm run dev
+```
+
+### Build
+
+```bash
+npm run dist:mac
+```
+
+Output directory: `release/`
+
+### GitHub Social Preview
+
+- Asset: `assets/social-preview.png`
+- GitHub path: `Settings` -> `General` -> `Social preview` -> `Upload an image`
+
+## Tech Stack
 
 - Electron
 - React + TypeScript
 - Vite
-- 本机 `sqlite3` CLI
+- local `sqlite3` CLI

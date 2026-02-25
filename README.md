@@ -3,9 +3,11 @@
 A minimal local desktop app to turn Typeless voice transcripts into daily summaries.
 
 ![Typeless Lite Social Preview](./assets/social-preview.png)
+## Download (ZIP)
 
-![Uploading image.png…]()
-
+- Open **Releases**: `https://github.com/AlexAnys/typeless-lite/releases`
+- Download asset: `Typeless Lite-*-arm64-mac.zip`
+- Unzip, then open `Typeless Lite.app`
 
 ## 中文说明
 
@@ -53,8 +55,25 @@ npm run dev
 
 ### 本地打开（打包版）
 
-1. 解压 `release/Typeless Lite-0.1.0-arm64-mac.zip`
-2. 双击 `Typeless Lite.app`
+#### 非技术用户：推荐安装方式（ZIP）
+
+1. 打开发布页：`https://github.com/AlexAnys/typeless-lite/releases`
+2. 找到最新版本，展开 `Assets`
+3. 下载：`Typeless Lite-*-arm64-mac.zip`
+4. 双击 zip 解压
+5. 打开解压后的文件夹，双击 `Typeless Lite.app`
+
+#### 如果 macOS 提示“无法打开”
+
+1. 对 `Typeless Lite.app` 点右键
+2. 选择 `打开`
+3. 在弹窗里再次点 `打开`（只需要一次）
+
+#### 打开后怎么用（最简）
+
+1. 应用会自动读取 Typeless 数据
+2. 左侧选日期，右侧看当天内容
+3. 点 `复制当天` 或 `Markdown/PDF/Raw` 导出
 
 ### 打包
 
@@ -120,6 +139,15 @@ npm run dist:mac
 ```
 
 Output directory: `release/`
+
+### Install from ZIP (for non-technical users)
+
+1. Open `https://github.com/AlexAnys/typeless-lite/releases`
+2. Download `Typeless Lite-*-arm64-mac.zip` from **Assets**
+3. Unzip
+4. Double-click `Typeless Lite.app`
+
+If macOS blocks it: right-click app -> **Open** -> **Open**.
 
 ### GitHub Social Preview
 

@@ -62,7 +62,15 @@ function ContextTextBlock({ label, value }: { label: string; value: string | nul
         <span>{formatCount(value)}</span>
       </div>
       <pre>{preview.text}</pre>
-      {preview.truncated ? <div className="context-hint">此字段较长，当前仅展示前 520 字符。</div> : null}
+      {preview.truncated ? (
+        <>
+          <div className="context-hint">此字段较长，当前仅展示前 520 字符。</div>
+          <details className="context-full-details">
+            <summary>查看完整内容</summary>
+            <pre>{value}</pre>
+          </details>
+        </>
+      ) : null}
     </section>
   );
 }

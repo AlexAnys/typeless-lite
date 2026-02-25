@@ -8,13 +8,63 @@ import {
   FileArchive,
   FileText,
   FolderOpen,
-  RefreshCcw
+  Globe,
+  RefreshCcw,
+  Shield,
+  TriangleAlert
 } from "lucide-react";
-import type { IpcResult, TranscriptDay, TranscriptModel } from "./types";
+import type { IpcResult, TranscriptDay, TranscriptEntry, TranscriptModel } from "./types";
 
 interface UiNotice {
   type: "success" | "error" | "info";
   text: string;
+}
+
+const SENSITIVE_PREVIEW_LIMIT = 520;
+
+function formatCount(value: string | null) {
+  if (!value) {
+    return "0";
+  }
+  return `${value.length.toLocaleString()} 字符`;
+}
+
+function previewSensitive(value: string | null) {
+  if (!value) {
+    return {
+      text: "",
+      truncated: false
+    };
+  }
+  if (value.length <= SENSITIVE_PREVIEW_LIMIT) {
+    return {
+      text: value,
+      truncated: false
+    };
+  }
+  return {
+    text: `${value.slice(0, SENSITIVE_PREVIEW_LIMIT)}\n...（已截断，完整长度 ${value.length.toLocaleString()} 字符）`,
+    truncated: true
+  };
+}
+
+function ContextTextBlock({ label, value }: { label: string; value: string | null }) {
+  if (!value) {
+    return null;
+  }
+
+  const preview = previewSensitive(value);
+
+  return (
+    <section className="context-block">
+      <div className="context-block-head">
+        <span>{label}</span>
+        <span>{formatCount(value)}</span>
+      </div>
+      <pre>{preview.text}</pre>
+      {preview.truncated ? <div className="context-hint">此字段较长，当前仅展示前 520 字符。</div> : null}
+    </section>
+  );
 }
 
 function App() {
@@ -28,9 +78,7 @@ function App() {
     if (!model) {
       return null;
     }
-    return (
-      model.days.find((day) => day.dayKey === selectedDayKey) ?? model.days[0] ?? null
-    );
+    return model.days.find((day) => day.dayKey === selectedDayKey) ?? model.days[0] ?? null;
   }, [model, selectedDayKey]);
 
   const refreshData = useCallback(async (overridePath?: string) => {
@@ -215,6 +263,139 @@ function App() {
     );
   }
 
+  function renderPrivacyLens(data: TranscriptModel) {
+    return (
+      <details className="privacy-lens" open>
+        <summary>
+          <Shield size={15} />
+          隐私上下文视图（本机提取）
+        </summary>
+
+        <div className="privacy-note">
+          以下字段来自本机数据库明文字段与 `audio_context` 解密结果。上传列基于你的本机逆向研究结论，用于帮助用户理解每次输入关联了哪些上下文信息。
+        </div>
+
+        <div className="privacy-metrics">
+          <div className="metric-item">有 `audio_context`：{data.contextSummary.withAudioContext}</div>
+          <div className="metric-item">解密成功：{data.contextSummary.decryptedEntries}</div>
+          <div className="metric-item">解密失败：{data.contextSummary.decryptFailedEntries}</div>
+          <div className="metric-item">含可见屏幕文本：{data.contextSummary.withVisibleScreenContent}</div>
+          <div className="metric-item">含完整输入框内容：{data.contextSummary.withFullFieldContent}</div>
+          <div className="metric-item">含 URL/域名：{data.contextSummary.withBrowserUrl}</div>
+        </div>
+
+        <div className="matrix-scroll">
+          <table className="matrix-table">
+            <thead>
+              <tr>
+                <th>数据</th>
+                <th>说明</th>
+                <th>本地存储</th>
+                <th>上传服务端</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.captureMatrix.map((item) => (
+                <tr key={item.key}>
+                  <td>{item.key}</td>
+                  <td>{item.description}</td>
+                  <td>{item.localStorage}</td>
+                  <td>{item.uploaded}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    );
+  }
+
+  function renderEntryAssociation(entry: TranscriptEntry) {
+    return (
+      <div className="entry-association">
+        {entry.appBundleId ? <span>Bundle: {entry.appBundleId}</span> : null}
+        {entry.windowTitle ? <span>窗口: {entry.windowTitle}</span> : null}
+        {entry.webDomain ? <span>域名: {entry.webDomain}</span> : null}
+        {entry.webUrl ? (
+          <span className="entry-url" title={entry.webUrl}>
+            <Globe size={12} />
+            {entry.webUrl}
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
+  function renderContext(entry: TranscriptEntry) {
+    const context = entry.context;
+    const decryptionLabel =
+      context.decryptionStatus === "ok"
+        ? "已解密"
+        : context.decryptionStatus === "failed"
+          ? "解密失败"
+          : "无 audio_context";
+
+    return (
+      <details className="context-details">
+        <summary>
+          <TriangleAlert size={14} />
+          上下文采集详情（{decryptionLabel}）
+        </summary>
+
+        {context.decryptionStatus === "failed" ? (
+          <div className="context-error">{context.decryptError ?? "无法解密该条记录。"}</div>
+        ) : null}
+
+        <div className="context-meta-grid">
+          <div>
+            <span>应用名</span>
+            <strong>{entry.appName}</strong>
+          </div>
+          <div>
+            <span>窗口标题</span>
+            <strong>{entry.windowTitle ?? "-"}</strong>
+          </div>
+          <div>
+            <span>URL / 域名</span>
+            <strong>{entry.webUrl ?? entry.webDomain ?? "-"}</strong>
+          </div>
+          <div>
+            <span>进程 / 路径</span>
+            <strong>
+              {context.processId ?? "-"}
+              {context.appPath ? ` | ${context.appPath}` : ""}
+            </strong>
+          </div>
+        </div>
+
+        <div className="context-text-grid">
+          <ContextTextBlock label="visible_screen_content" value={context.visibleScreenContent} />
+          <ContextTextBlock label="selected_text" value={context.selectedText} />
+          <ContextTextBlock label="text_before_cursor" value={context.textBeforeCursor} />
+          <ContextTextBlock label="text_after_cursor" value={context.textAfterCursor} />
+          <ContextTextBlock label="full_field_content" value={context.fullFieldContent} />
+          <ContextTextBlock label="surrounding_context.before" value={context.surroundingBefore} />
+          <ContextTextBlock label="surrounding_context.after" value={context.surroundingAfter} />
+        </div>
+
+        {context.deviceEnvironment ? (
+          <div className="device-meta">
+            设备环境：
+            {[
+              context.deviceEnvironment.operatingSystem,
+              context.deviceEnvironment.osVersion,
+              context.deviceEnvironment.architecture,
+              context.deviceEnvironment.locale,
+              context.deviceEnvironment.region
+            ]
+              .filter(Boolean)
+              .join(" | ") || "-"}
+          </div>
+        ) : null}
+      </details>
+    );
+  }
+
   function renderTimeline(day: TranscriptDay) {
     return (
       <section className="timeline-panel">
@@ -252,7 +433,9 @@ function App() {
                 <span className="entry-time">{entry.timeLabel}</span>
                 <span className="entry-app">{entry.appName}</span>
               </div>
+              {renderEntryAssociation(entry)}
               <p className="entry-text">{entry.text}</p>
+              {renderContext(entry)}
             </article>
           ))}
         </div>
@@ -265,7 +448,7 @@ function App() {
       <header className="topbar">
         <div className="brand-block">
           <div className="brand">Typeless Lite</div>
-          <div className="brand-sub">本地语音转录浏览与导出</div>
+          <div className="brand-sub">本地语音转录浏览、导出与上下文审计</div>
         </div>
 
         <div className="source-path" title={model?.dbPath ?? "未连接 Typeless 数据库"}>
@@ -301,6 +484,8 @@ function App() {
           <span>快捷键：⌘/Ctrl + Shift + C 复制当天</span>
         </div>
       </section>
+
+      {model ? renderPrivacyLens(model) : null}
 
       <main className="workspace">
         {isLoading ? (

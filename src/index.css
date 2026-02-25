@@ -162,6 +162,84 @@ textarea {
   padding: 0 12px;
 }
 
+.privacy-lens {
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow);
+  padding: 10px 12px;
+}
+
+.privacy-lens > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f8e6e;
+}
+
+.privacy-lens > summary::-webkit-details-marker {
+  display: none;
+}
+
+.privacy-note {
+  margin-top: 10px;
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.privacy-metrics {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.metric-item {
+  min-height: 34px;
+  border-radius: 10px;
+  border: 1px solid #dbe5df;
+  background: #f9fbfa;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 12px;
+  color: #374151;
+}
+
+.matrix-scroll {
+  margin-top: 10px;
+  overflow: auto;
+  border: 1px solid #e5ece8;
+  border-radius: 10px;
+}
+
+.matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+  background: #ffffff;
+}
+
+.matrix-table th,
+.matrix-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #edf2ef;
+  font-size: 12px;
+  vertical-align: top;
+}
+
+.matrix-table th {
+  background: #f6faf8;
+  color: #374151;
+  font-weight: 700;
+}
+
 .workspace {
   min-height: 0;
   flex: 1;
@@ -308,6 +386,32 @@ textarea {
   margin-bottom: 8px;
 }
 
+.entry-association {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.entry-association span {
+  border-radius: 999px;
+  border: 1px solid #e4ece8;
+  background: #f7faf8;
+  color: #4b5563;
+  font-size: 11px;
+  padding: 3px 8px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-url {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .entry-time {
   color: #0f8e6e;
   font-weight: 700;
@@ -325,6 +429,120 @@ textarea {
   line-height: 1.62;
   font-size: 14px;
   color: #111827;
+}
+
+.context-details {
+  margin-top: 10px;
+  border: 1px solid #e6ece8;
+  border-radius: 10px;
+  background: #fbfcfb;
+  padding: 8px 10px;
+}
+
+.context-details > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.context-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.context-error {
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid #ffd8d2;
+  background: #fef3f2;
+  color: #b42318;
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+.context-meta-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.context-meta-grid div {
+  border: 1px solid #e6ece8;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px;
+}
+
+.context-meta-grid span {
+  display: block;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.context-meta-grid strong {
+  display: block;
+  margin-top: 3px;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.context-text-grid {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.context-block {
+  border: 1px solid #e6ece8;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px;
+}
+
+.context-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: #4b5563;
+  font-weight: 700;
+}
+
+.context-block pre {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.5;
+  font-size: 12px;
+  color: #111827;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.context-hint {
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.device-meta {
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid #e4ece8;
+  background: #f7faf8;
+  color: #374151;
+  font-size: 12px;
+  padding: 8px 10px;
 }
 
 .loading-panel {
@@ -413,6 +631,14 @@ textarea {
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .privacy-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .context-meta-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 760px) {
@@ -442,5 +668,9 @@ textarea {
   .empty-actions .btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .privacy-metrics {
+    grid-template-columns: 1fr;
   }
 }

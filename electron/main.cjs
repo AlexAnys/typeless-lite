@@ -4,12 +4,86 @@ const fsp = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const { execFile } = require("node:child_process");
+const { createDecipheriv } = require("node:crypto");
 const { promisify } = require("node:util");
 
 const execFileAsync = promisify(execFile);
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 const CONFIG_FILE = "typeless-lite-settings.json";
 const isDev = Boolean(DEV_SERVER_URL);
+const AUDIO_CONTEXT_KEY = Buffer.from(
+  "7d4a8f2e6b9c3a1f5e8d2c7b4a9f6e3d1b5a2f9e6d3c0b7a4f1e8d5c2b9f6a3d",
+  "hex"
+);
+
+const PRIVACY_CAPTURE_MATRIX = [
+  {
+    key: "visible_screen_content",
+    description: "屏幕上所有可见文字（最多 10,000 字符）",
+    localStorage: "加密存储",
+    uploaded: "是"
+  },
+  {
+    key: "selected_text",
+    description: "当前选中的文字",
+    localStorage: "加密存储",
+    uploaded: "是"
+  },
+  {
+    key: "text_before_cursor",
+    description: "光标前的文字",
+    localStorage: "加密存储",
+    uploaded: "是"
+  },
+  {
+    key: "text_after_cursor",
+    description: "光标后的文字",
+    localStorage: "加密存储",
+    uploaded: "是"
+  },
+  {
+    key: "full_field_content",
+    description: "输入框完整内容",
+    localStorage: "加密存储",
+    uploaded: "是"
+  },
+  {
+    key: "surrounding_context",
+    description: "输入框前后的 UI 内容（各 1,000 字符）",
+    localStorage: "加密存储",
+    uploaded: "是"
+  },
+  {
+    key: "app_name / bundle_id",
+    description: "当前应用名称和标识",
+    localStorage: "明文存储",
+    uploaded: "是"
+  },
+  {
+    key: "window_title",
+    description: "窗口标题",
+    localStorage: "明文存储",
+    uploaded: "是"
+  },
+  {
+    key: "page_url / domain",
+    description: "浏览器 URL 和域名",
+    localStorage: "明文存储",
+    uploaded: "是"
+  },
+  {
+    key: "device_environment",
+    description: "OS、CPU、内存、语言、地区",
+    localStorage: "加密存储",
+    uploaded: "是"
+  },
+  {
+    key: "app_path / process_id",
+    description: "应用路径和进程 ID",
+    localStorage: "加密存储",
+    uploaded: "是"
+  }
+];
 
 let mainWindow = null;
 let cachedData = null;
@@ -226,21 +300,210 @@ function toDateSafe(rawValue) {
   return new Date();
 }
 
+function normalizeString(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeWebUrl(value) {
+  const text = normalizeString(value);
+  if (!text) {
+    return null;
+  }
+  if (text === "null/" || text === "null" || text === "about:blank") {
+    return null;
+  }
+  return text;
+}
+
+function decryptAudioContext(audioContext) {
+  const payload = normalizeString(audioContext);
+  if (!payload) {
+    return {
+      status: "none",
+      context: null,
+      error: null
+    };
+  }
+
+  const parts = payload.split(":");
+  if (parts.length !== 2) {
+    return {
+      status: "failed",
+      context: null,
+      error: "audio_context 格式不是 iv:ciphertext"
+    };
+  }
+
+  try {
+    const iv = Buffer.from(parts[0], "base64");
+    const ciphertext = Buffer.from(parts[1], "base64");
+
+    const decipher = createDecipheriv("aes-256-cbc", AUDIO_CONTEXT_KEY, iv);
+    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
+    const context = JSON.parse(plaintext);
+    return {
+      status: "ok",
+      context,
+      error: null
+    };
+  } catch (error) {
+    return {
+      status: "failed",
+      context: null,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+function extractContextData(contextResult) {
+  if (!contextResult || contextResult.status !== "ok" || !contextResult.context) {
+    return {
+      decryptionStatus: contextResult?.status ?? "none",
+      decryptError: contextResult?.error ?? null,
+      visibleScreenContent: null,
+      selectedText: null,
+      textBeforeCursor: null,
+      textAfterCursor: null,
+      fullFieldContent: null,
+      surroundingBefore: null,
+      surroundingAfter: null,
+      appNameFromContext: null,
+      appIdentifier: null,
+      windowTitleFromContext: null,
+      pageTitle: null,
+      pageUrl: null,
+      domain: null,
+      processId: null,
+      appPath: null,
+      deviceEnvironment: null
+    };
+  }
+
+  const payload = contextResult.context;
+  const active = payload.active_application || {};
+  const browser = active.browser_context || {};
+  const appMetadata = active.app_metadata || {};
+  const insertion = payload.text_insertion_point || {};
+  const cursor = insertion.cursor_state || {};
+  const surrounding = insertion.surrounding_context || {};
+  const device = payload.device_environment || {};
+
+  return {
+    decryptionStatus: "ok",
+    decryptError: null,
+    visibleScreenContent: normalizeString(active.visible_screen_content),
+    selectedText: normalizeString(cursor.selected_text),
+    textBeforeCursor: normalizeString(cursor.text_before_cursor),
+    textAfterCursor: normalizeString(cursor.text_after_cursor),
+    fullFieldContent: normalizeString(cursor.full_field_content),
+    surroundingBefore: normalizeString(surrounding.text_before_input_area),
+    surroundingAfter: normalizeString(surrounding.text_after_input_area),
+    appNameFromContext: normalizeString(active.app_name),
+    appIdentifier: normalizeString(active.app_identifier),
+    windowTitleFromContext: normalizeString(active.window_title),
+    pageTitle: normalizeString(browser.page_title),
+    pageUrl: normalizeWebUrl(browser.page_url),
+    domain: normalizeString(browser.domain),
+    processId: typeof appMetadata.process_id === "number" ? appMetadata.process_id : null,
+    appPath: normalizeString(appMetadata.app_path),
+    deviceEnvironment: {
+      operatingSystem: normalizeString(device.operating_system),
+      osVersion: normalizeString(device.os_version),
+      architecture: normalizeString(device.architecture),
+      locale: normalizeString(device.locale),
+      region: normalizeString(device.region)
+    }
+  };
+}
+
+function buildContextSummary(entries) {
+  const summary = {
+    totalEntries: entries.length,
+    withAudioContext: 0,
+    decryptedEntries: 0,
+    decryptFailedEntries: 0,
+    withVisibleScreenContent: 0,
+    withSelectedText: 0,
+    withTextBeforeCursor: 0,
+    withTextAfterCursor: 0,
+    withFullFieldContent: 0,
+    withSurroundingContext: 0,
+    withBrowserUrl: 0,
+    withAppPath: 0
+  };
+
+  for (const entry of entries) {
+    if (entry.hasAudioContext) {
+      summary.withAudioContext += 1;
+    }
+    if (entry.context.decryptionStatus === "ok") {
+      summary.decryptedEntries += 1;
+    }
+    if (entry.context.decryptionStatus === "failed") {
+      summary.decryptFailedEntries += 1;
+    }
+    if (entry.context.visibleScreenContent) {
+      summary.withVisibleScreenContent += 1;
+    }
+    if (entry.context.selectedText) {
+      summary.withSelectedText += 1;
+    }
+    if (entry.context.textBeforeCursor) {
+      summary.withTextBeforeCursor += 1;
+    }
+    if (entry.context.textAfterCursor) {
+      summary.withTextAfterCursor += 1;
+    }
+    if (entry.context.fullFieldContent) {
+      summary.withFullFieldContent += 1;
+    }
+    if (entry.context.surroundingBefore || entry.context.surroundingAfter) {
+      summary.withSurroundingContext += 1;
+    }
+    if (entry.webUrl) {
+      summary.withBrowserUrl += 1;
+    }
+    if (entry.context.appPath) {
+      summary.withAppPath += 1;
+    }
+  }
+
+  return summary;
+}
+
 function buildModel(rows, dbPath, source) {
   const entries = rows.map((row, index) => {
     const text = String(row.text || "").trim();
     const created = toDateSafe(row.created_at || row.updated_at);
+    const contextResult = decryptAudioContext(row.audio_context);
+    const context = extractContextData(contextResult);
+    const rowWebUrl = normalizeWebUrl(row.focused_app_window_web_url);
+    const rowWebDomain = normalizeString(row.focused_app_window_web_domain);
+    const rowWebTitle = normalizeString(row.focused_app_window_web_title);
+    const rowWindowTitle = normalizeString(row.focused_app_window_title);
+
     return {
       id: row.id || `entry-${index}`,
       text,
       createdAt: created.toISOString(),
       dayKey: formatDateKey(created),
       timeLabel: formatTimeLabel(created),
-      appName: row.focused_app_name || "Unknown App",
+      appName: normalizeString(row.focused_app_name) || context.appNameFromContext || "Unknown App",
+      appBundleId: normalizeString(row.focused_app_bundle_id) || context.appIdentifier,
+      windowTitle: rowWindowTitle || context.windowTitleFromContext,
+      webTitle: rowWebTitle || context.pageTitle,
+      webDomain: rowWebDomain || context.domain,
+      webUrl: rowWebUrl || context.pageUrl,
       language: row.detected_language || "unknown",
       duration: typeof row.duration === "number" ? row.duration : null,
       status: row.status || "unknown",
-      mode: row.mode || "voice_transcript"
+      mode: row.mode || "voice_transcript",
+      hasAudioContext: Boolean(normalizeString(row.audio_context)),
+      context
     };
   });
 
@@ -282,6 +545,8 @@ function buildModel(rows, dbPath, source) {
       newest,
       oldest
     },
+    contextSummary: buildContextSummary(entries),
+    captureMatrix: PRIVACY_CAPTURE_MATRIX,
     days
   };
 }
@@ -304,7 +569,15 @@ function getChronologicalEntries(day) {
 function buildDayPlainText(day) {
   const lines = [`${day.dayKey} ${day.dayLabel}`, ""];
   for (const entry of getChronologicalEntries(day)) {
-    lines.push(`[${entry.timeLabel}] ${entry.text}`);
+    const contextParts = [entry.appName];
+    if (entry.windowTitle) {
+      contextParts.push(entry.windowTitle);
+    }
+    if (entry.webDomain) {
+      contextParts.push(entry.webDomain);
+    }
+    lines.push(`[${entry.timeLabel}] ${contextParts.join(" | ")}`);
+    lines.push(entry.text);
     lines.push("");
   }
   return lines.join("\n").trim();
@@ -323,6 +596,19 @@ function buildDayMarkdown(day, dbPath) {
 
   for (const entry of getChronologicalEntries(day)) {
     lines.push(`## ${entry.timeLabel}`);
+    lines.push("");
+    lines.push(`- 应用：${entry.appName}`);
+    if (entry.appBundleId) {
+      lines.push(`- Bundle ID：${entry.appBundleId}`);
+    }
+    if (entry.windowTitle) {
+      lines.push(`- 窗口：${entry.windowTitle}`);
+    }
+    if (entry.webUrl) {
+      lines.push(`- URL：${entry.webUrl}`);
+    } else if (entry.webDomain) {
+      lines.push(`- 域名：${entry.webDomain}`);
+    }
     lines.push("");
     lines.push(entry.text);
     lines.push("");
@@ -345,7 +631,14 @@ function renderPdfHtml(day, dbPath) {
     .map(
       (entry) => `
       <article class="entry">
-        <div class="time">${escapeHtml(entry.timeLabel)}</div>
+        <div class="time">${escapeHtml(entry.timeLabel)} · ${escapeHtml(entry.appName)}</div>
+        ${
+          entry.windowTitle || entry.webUrl
+            ? `<div class="meta-line">${escapeHtml(
+                [entry.windowTitle, entry.webUrl].filter(Boolean).join(" | ")
+              )}</div>`
+            : ""
+        }
         <pre>${escapeHtml(entry.text)}</pre>
       </article>
     `
@@ -384,6 +677,11 @@ function renderPdfHtml(day, dbPath) {
         padding: 12px 14px;
         margin: 0 0 10px;
         break-inside: avoid;
+      }
+      .meta-line {
+        color: #6b7280;
+        font-size: 12px;
+        margin-bottom: 8px;
       }
       .time {
         color: #10a37f;
@@ -431,8 +729,13 @@ SELECT
   mode,
   focused_app_name,
   focused_app_bundle_id,
+  focused_app_window_title,
+  focused_app_window_web_title,
+  focused_app_window_web_domain,
+  focused_app_window_web_url,
   detected_language,
   duration,
+  audio_context,
   COALESCE(NULLIF(TRIM(edited_text), ''), NULLIF(TRIM(refined_text), '')) AS text
 FROM history
 WHERE COALESCE(NULLIF(TRIM(edited_text), ''), NULLIF(TRIM(refined_text), '')) IS NOT NULL

@@ -4,6 +4,9 @@ A minimal local desktop app to turn Typeless voice transcripts into daily summar
 
 ![Typeless Lite Social Preview](./assets/social-preview.png)
 
+![Uploading image.png…]()
+
+
 ## 中文说明
 
 ### 这是什么

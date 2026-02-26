@@ -3,6 +3,14 @@
 A minimal local desktop app to turn Typeless voice transcripts into daily summaries.
 
 ![Typeless Lite Social Preview](./assets/social-preview.png)
+
+## 界面预览
+
+<p align="center">
+  <img src="./assets/screenshots/main-view.png" alt="应用主界面" width="49%" />
+  <img src="./assets/screenshots/privacy-context-view.png" alt="隐私上下文视图" width="49%" />
+</p>
+
 ## Download (ZIP)
 
 - Latest release page: `https://github.com/AlexAnys/typeless-lite/releases/tag/v0.1.2`

@@ -47,6 +47,9 @@ Typeless Lite 把流程压缩为 3 步：
 - 导出 Markdown（编辑友好）
 - 导出 PDF（分享友好）
 - 导出 Raw（`JSON + typeless.db.backup`）
+- 本地 Agent API（供 OpenClaw 等本机 Agent 调用）
+
+Agent API 文档：`docs/agent-api.md`
 
 ### 隐私说明
 
@@ -83,6 +86,26 @@ npm run dev
 1. 应用会自动读取 Typeless 数据
 2. 左侧选日期，右侧看当天内容
 3. 点 `复制当天` 或 `Markdown/PDF/Raw` 导出
+
+### OpenClaw Agent 接入（简短）
+
+OpenClaw 是本地 AI agent，可直接调用 Typeless Lite 的本地 API，拿到某一天的 Markdown 语音记录（template）。
+
+1. 打开 `Typeless Lite.app`（会启动本地 API）。
+2. 读取 token：`~/Library/Application Support/typeless-lite/typeless-lite-settings.json` 的 `agentApiToken`。
+3. 在 OpenClaw 中让 agent 调用：`GET http://127.0.0.1:18423/v1/markdown?date=today|yesterday|YYYY-MM-DD`，并附带 `Authorization: Bearer <token>`。
+
+可直接贴给 OpenClaw 的 prompt：
+
+```text
+你可以调用 Typeless Lite 本地 API 获取语音输入历史。请使用：
+GET /v1/markdown?date=<today|yesterday|YYYY-MM-DD>
+Header: Authorization: Bearer <token>
+返回时优先使用响应里的 markdown 字段，不要编造记录内容。
+```
+
+完整示例：`docs/openclaw-agent-quickstart.md`  
+Repository: `https://github.com/AlexAnys/typeless-lite`
 
 ### 打包
 
@@ -127,6 +150,9 @@ Typeless Lite reduces the workflow to 3 steps:
 - Markdown export
 - PDF export
 - Raw export (`JSON + typeless.db.backup`)
+- Local Agent API (for OpenClaw or other local agents)
+
+Agent API docs: `docs/agent-api.md`
 
 ### Privacy
 

@@ -7,5 +7,7 @@ contextBridge.exposeInMainWorld("typelessApi", {
   exportMarkdown: (payload) => ipcRenderer.invoke("typeless:export-markdown", payload),
   exportPdf: (payload) => ipcRenderer.invoke("typeless:export-pdf", payload),
   exportRaw: (payload) => ipcRenderer.invoke("typeless:export-raw", payload),
-  openPath: (payload) => ipcRenderer.invoke("typeless:open-path", payload)
+  openPath: (payload) => ipcRenderer.invoke("typeless:open-path", payload),
+  getAgentApiInfo: () => ipcRenderer.invoke("typeless:get-agent-api-info"),
+  regenerateAgentApiToken: () => ipcRenderer.invoke("typeless:regenerate-agent-api-token")
 });

@@ -94,6 +94,14 @@ export interface IpcResult<T = undefined> {
   data?: T;
 }
 
+export interface AgentApiInfo {
+  enabled: boolean;
+  host: string;
+  port: number;
+  baseUrl: string;
+  token: string;
+}
+
 export interface TypelessApi {
   loadData(payload?: { overridePath?: string }): Promise<IpcResult<TranscriptModel>>;
   pickDatabase(): Promise<IpcResult<TranscriptModel>>;
@@ -102,4 +110,6 @@ export interface TypelessApi {
   exportPdf(payload: { dayKey: string }): Promise<IpcResult>;
   exportRaw(payload: { dayKey?: string }): Promise<IpcResult>;
   openPath(payload: { path: string }): Promise<IpcResult>;
+  getAgentApiInfo(): Promise<IpcResult<AgentApiInfo>>;
+  regenerateAgentApiToken(): Promise<IpcResult<AgentApiInfo>>;
 }

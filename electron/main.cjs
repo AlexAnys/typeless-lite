@@ -1,16 +1,20 @@
 const { app, BrowserWindow, clipboard, dialog, ipcMain, shell } = require("electron");
 const fs = require("node:fs");
 const fsp = require("node:fs/promises");
+const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
 const { execFile } = require("node:child_process");
-const { createDecipheriv } = require("node:crypto");
+const { createDecipheriv, randomBytes, timingSafeEqual } = require("node:crypto");
 const { promisify } = require("node:util");
 
 const execFileAsync = promisify(execFile);
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 const CONFIG_FILE = "typeless-lite-settings.json";
 const isDev = Boolean(DEV_SERVER_URL);
+const AGENT_API_DEFAULT_HOST = "127.0.0.1";
+const AGENT_API_DEFAULT_PORT = 18423;
+const AGENT_API_CACHE_TTL_MS = 30_000;
 const AUDIO_CONTEXT_KEY = Buffer.from(
   "7d4a8f2e6b9c3a1f5e8d2c7b4a9f6e3d1b5a2f9e6d3c0b7a4f1e8d5c2b9f6a3d",
   "hex"
@@ -87,6 +91,8 @@ const PRIVACY_CAPTURE_MATRIX = [
 
 let mainWindow = null;
 let cachedData = null;
+let agentApiServer = null;
+let agentApiSettings = null;
 
 function getConfigPath() {
   return path.join(app.getPath("userData"), CONFIG_FILE);
@@ -715,6 +721,308 @@ function sanitizeFileName(raw, fallback) {
   return cleaned || fallback;
 }
 
+class AgentApiError extends Error {
+  constructor(status, code, message) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+function isValidPort(value) {
+  return Number.isInteger(value) && value > 0 && value <= 65535;
+}
+
+function parsePort(value) {
+  const numeric = Number(value);
+  if (!isValidPort(numeric)) {
+    return AGENT_API_DEFAULT_PORT;
+  }
+  return numeric;
+}
+
+function generateAgentApiToken() {
+  return randomBytes(24).toString("hex");
+}
+
+function toAgentApiInfo(settings) {
+  return {
+    enabled: settings.enabled,
+    host: settings.host,
+    port: settings.port,
+    baseUrl: settings.baseUrl,
+    token: settings.token
+  };
+}
+
+async function ensureAgentApiSettings() {
+  const config = await readConfig();
+  const host = AGENT_API_DEFAULT_HOST;
+  const enabled =
+    typeof config.agentApiEnabled === "boolean" ? config.agentApiEnabled : true;
+  const port = parsePort(config.agentApiPort);
+  const token = normalizeString(config.agentApiToken) || generateAgentApiToken();
+  const baseUrl = `http://${host}:${port}`;
+
+  const patch = {};
+  if (config.agentApiEnabled !== enabled) {
+    patch.agentApiEnabled = enabled;
+  }
+  if (config.agentApiPort !== port) {
+    patch.agentApiPort = port;
+  }
+  if (config.agentApiToken !== token) {
+    patch.agentApiToken = token;
+  }
+
+  if (Object.keys(patch).length > 0) {
+    await writeConfig(patch);
+  }
+
+  agentApiSettings = { enabled, host, port, token, baseUrl };
+  return agentApiSettings;
+}
+
+function parseBearerToken(header) {
+  if (typeof header !== "string") {
+    return null;
+  }
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : null;
+}
+
+function safeEqualToken(expected, actual) {
+  const expectedBuffer = Buffer.from(expected || "", "utf8");
+  const actualBuffer = Buffer.from(actual || "", "utf8");
+  if (expectedBuffer.length !== actualBuffer.length) {
+    return false;
+  }
+  return timingSafeEqual(expectedBuffer, actualBuffer);
+}
+
+function validateAgentApiAuth(req) {
+  if (!agentApiSettings || !agentApiSettings.token) {
+    throw new AgentApiError(503, "API_NOT_READY", "Agent API 尚未初始化。");
+  }
+
+  const provided = parseBearerToken(req.headers.authorization);
+  if (!provided || !safeEqualToken(agentApiSettings.token, provided)) {
+    throw new AgentApiError(401, "UNAUTHORIZED", "未授权请求。");
+  }
+}
+
+function parseFixedDateKey(raw) {
+  const text = normalizeString(raw);
+  if (!text || !/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    throw new AgentApiError(400, "INVALID_DATE", "date 仅支持 today / yesterday / YYYY-MM-DD。");
+  }
+
+  const [yearRaw, monthRaw, dayRaw] = text.split("-");
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  const parsed = new Date(year, month - 1, day);
+
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() + 1 !== month ||
+    parsed.getDate() !== day
+  ) {
+    throw new AgentApiError(400, "INVALID_DATE", "日期格式无效，请使用 YYYY-MM-DD。");
+  }
+
+  return formatDateKey(parsed);
+}
+
+function resolveDateInput(rawDate) {
+  const normalized = normalizeString(rawDate) || "today";
+  const lower = normalized.toLowerCase();
+  const now = new Date();
+
+  if (lower === "today") {
+    return formatDateKey(now);
+  }
+  if (lower === "yesterday") {
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    return formatDateKey(yesterday);
+  }
+  return parseFixedDateKey(normalized);
+}
+
+async function ensureFreshDataForApi() {
+  const loadedAtMs = cachedData?.loadedAt ? Date.parse(cachedData.loadedAt) : 0;
+  const expired =
+    !loadedAtMs ||
+    Number.isNaN(loadedAtMs) ||
+    Date.now() - loadedAtMs > AGENT_API_CACHE_TTL_MS;
+
+  if (!cachedData || expired) {
+    await loadData(null);
+  }
+
+  return cachedData;
+}
+
+async function getDayForApi(rawDate) {
+  const dayKey = resolveDateInput(rawDate);
+  const data = await ensureFreshDataForApi();
+  const day = data.days.find((item) => item.dayKey === dayKey);
+  if (!day) {
+    throw new AgentApiError(404, "DAY_NOT_FOUND", `未找到 ${dayKey} 的数据。`);
+  }
+  return { day, dayKey, data };
+}
+
+function sendJson(res, status, payload) {
+  const body = JSON.stringify(payload);
+  res.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Content-Length": Buffer.byteLength(body),
+    "Cache-Control": "no-store"
+  });
+  res.end(body);
+}
+
+function sendMarkdown(res, status, fileName, markdown) {
+  res.writeHead(status, {
+    "Content-Type": "text/markdown; charset=utf-8",
+    "Content-Disposition": `attachment; filename="${fileName}"`,
+    "Cache-Control": "no-store"
+  });
+  res.end(markdown);
+}
+
+function sendAgentApiError(res, error) {
+  if (error instanceof AgentApiError) {
+    if (error.status === 401) {
+      res.setHeader("WWW-Authenticate", "Bearer");
+    }
+    sendJson(res, error.status, {
+      ok: false,
+      code: error.code,
+      error: error.message
+    });
+    return;
+  }
+
+  sendJson(res, 500, {
+    ok: false,
+    code: "INTERNAL_ERROR",
+    error: makeError(error)
+  });
+}
+
+async function handleAgentApiRequest(req, res) {
+  if (!agentApiSettings?.enabled) {
+    throw new AgentApiError(503, "API_DISABLED", "Agent API 未启用。");
+  }
+
+  const method = (req.method || "GET").toUpperCase();
+  if (method !== "GET") {
+    res.setHeader("Allow", "GET");
+    throw new AgentApiError(405, "METHOD_NOT_ALLOWED", "仅支持 GET 请求。");
+  }
+
+  validateAgentApiAuth(req);
+
+  const url = new URL(req.url || "/", "http://localhost");
+  const pathname = url.pathname;
+
+  if (pathname === "/v1/health") {
+    sendJson(res, 200, {
+      ok: true,
+      service: "typeless-lite",
+      version: app.getVersion(),
+      host: agentApiSettings.host,
+      port: agentApiSettings.port
+    });
+    return;
+  }
+
+  if (pathname === "/v1/days") {
+    const data = await ensureFreshDataForApi();
+    sendJson(res, 200, {
+      ok: true,
+      days: data.days.map((day) => ({
+        dayKey: day.dayKey,
+        dayLabel: day.dayLabel,
+        count: day.count
+      })),
+      totalDays: data.dayCount
+    });
+    return;
+  }
+
+  if (pathname === "/v1/markdown") {
+    const { day, dayKey, data } = await getDayForApi(url.searchParams.get("date"));
+    const markdown = buildDayMarkdown(day, data.dbPath);
+    sendJson(res, 200, {
+      ok: true,
+      date: dayKey,
+      dayLabel: day.dayLabel,
+      count: day.count,
+      markdown
+    });
+    return;
+  }
+
+  if (pathname === "/v1/markdown/download") {
+    const { day, dayKey, data } = await getDayForApi(url.searchParams.get("date"));
+    const markdown = buildDayMarkdown(day, data.dbPath);
+    const fileName = sanitizeFileName(`typeless-${dayKey}.md`, "typeless-export.md");
+    sendMarkdown(res, 200, fileName, markdown);
+    return;
+  }
+
+  throw new AgentApiError(404, "NOT_FOUND", "路由不存在。");
+}
+
+async function stopAgentApiServer() {
+  if (!agentApiServer) {
+    return;
+  }
+
+  const server = agentApiServer;
+  agentApiServer = null;
+  await new Promise((resolve) => {
+    try {
+      server.close(() => resolve());
+    } catch {
+      resolve();
+    }
+  });
+}
+
+async function startAgentApiServer() {
+  const settings = await ensureAgentApiSettings();
+  if (!settings.enabled) {
+    await stopAgentApiServer();
+    return settings;
+  }
+
+  await stopAgentApiServer();
+
+  const server = http.createServer((req, res) => {
+    handleAgentApiRequest(req, res).catch((error) => {
+      sendAgentApiError(res, error);
+    });
+  });
+
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(settings.port, settings.host, () => {
+      server.off("error", reject);
+      resolve();
+    });
+  });
+
+  agentApiServer = server;
+  console.log(`[Agent API] Listening on ${settings.baseUrl}`);
+  return settings;
+}
+
 async function loadData(overridePath) {
   const { dbPath, source } = await discoverDbPath(overridePath);
 
@@ -945,6 +1253,33 @@ async function handleOpenPath(_event, payload) {
   }
 }
 
+async function handleGetAgentApiInfo() {
+  try {
+    const settings = agentApiSettings || (await ensureAgentApiSettings());
+    return {
+      ok: true,
+      data: toAgentApiInfo(settings)
+    };
+  } catch (error) {
+    return { ok: false, error: makeError(error) };
+  }
+}
+
+async function handleRegenerateAgentApiToken() {
+  try {
+    const token = generateAgentApiToken();
+    await writeConfig({ agentApiToken: token });
+    agentApiSettings = null;
+    const settings = await startAgentApiServer();
+    return {
+      ok: true,
+      data: toAgentApiInfo(settings)
+    };
+  } catch (error) {
+    return { ok: false, error: makeError(error) };
+  }
+}
+
 function registerIpcHandlers() {
   ipcMain.handle("typeless:load", handleLoad);
   ipcMain.handle("typeless:pick-db", handlePickDb);
@@ -953,6 +1288,8 @@ function registerIpcHandlers() {
   ipcMain.handle("typeless:export-pdf", handleExportPdf);
   ipcMain.handle("typeless:export-raw", handleExportRaw);
   ipcMain.handle("typeless:open-path", handleOpenPath);
+  ipcMain.handle("typeless:get-agent-api-info", handleGetAgentApiInfo);
+  ipcMain.handle("typeless:regenerate-agent-api-token", handleRegenerateAgentApiToken);
 }
 
 function createMainWindow() {
@@ -982,9 +1319,14 @@ function createMainWindow() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   registerIpcHandlers();
   createMainWindow();
+  try {
+    await startAgentApiServer();
+  } catch (error) {
+    console.error(`[Agent API] Failed to start: ${makeError(error)}`);
+  }
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -997,4 +1339,8 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on("before-quit", () => {
+  void stopAgentApiServer();
 });

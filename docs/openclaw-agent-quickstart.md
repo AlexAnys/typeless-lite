@@ -5,7 +5,9 @@
 ## 最小步骤
 
 1. 打开 `Typeless Lite.app`（本地 API 会启动在 `127.0.0.1:18423`）。
-2. 读取 token：`~/Library/Application Support/typeless-lite/typeless-lite-settings.json` 的 `agentApiToken`。
+2. 读取 token（`agentApiToken`）。注意：macOS 上路径会因“开发模式 vs 打包版”不同而不同：
+   - 打包版（常见）：`~/Library/Application Support/Typeless Lite/typeless-lite-settings.json`
+   - 开发模式（`npm start` / `electron .`）：`~/Library/Application Support/typeless-lite/typeless-lite-settings.json`
 3. 让 OpenClaw 调用：
    - `GET /v1/markdown?date=today|yesterday|YYYY-MM-DD`
    - Header: `Authorization: Bearer <token>`

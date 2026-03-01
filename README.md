@@ -13,9 +13,8 @@ A minimal local desktop app to turn Typeless voice transcripts into daily summar
 
 ## Download (ZIP)
 
-- Latest release page: `https://github.com/AlexAnys/typeless-lite/releases/tag/v0.1.2`
-- Direct ZIP: `https://github.com/AlexAnys/typeless-lite/releases/download/v0.1.2/Typeless-Lite-v0.1.2-macos-arm64.zip`
-- Download, unzip, then open `Typeless Lite.app`
+- Latest release page: `https://github.com/AlexAnys/typeless-lite/releases/latest`
+- Download the macOS arm64 ZIP from **Assets**, unzip, then open `Typeless Lite.app`
 
 ## 中文说明
 
@@ -92,7 +91,9 @@ npm run dev
 OpenClaw 是本地 AI agent，可直接调用 Typeless Lite 的本地 API，拿到某一天的 Markdown 语音记录（template）。
 
 1. 打开 `Typeless Lite.app`（会启动本地 API）。
-2. 读取 token：`~/Library/Application Support/typeless-lite/typeless-lite-settings.json` 的 `agentApiToken`。
+2. 读取 token（`agentApiToken`）。注意：macOS 上路径会因“开发模式 vs 打包版”不同而不同：
+   - 打包版（常见）：`~/Library/Application Support/Typeless Lite/typeless-lite-settings.json`
+   - 开发模式（`npm start` / `electron .`）：`~/Library/Application Support/typeless-lite/typeless-lite-settings.json`
 3. 在 OpenClaw 中让 agent 调用：`GET http://127.0.0.1:18423/v1/markdown?date=today|yesterday|YYYY-MM-DD`，并附带 `Authorization: Bearer <token>`。
 
 可直接贴给 OpenClaw 的 prompt：

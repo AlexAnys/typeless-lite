@@ -14,6 +14,22 @@ async function copyDir(from, to) {
   await fs.cp(from, to, { recursive: true, force: true });
 }
 
+async function assertContains(filePath, needles, hint) {
+  const content = await fs.readFile(filePath, "utf8");
+  const missing = needles.filter((needle) => !content.includes(needle));
+  if (missing.length > 0) {
+    throw new Error(
+      [
+        `prepare-app: verification failed for ${filePath}`,
+        `Missing markers: ${missing.map((value) => JSON.stringify(value)).join(", ")}`,
+        hint
+      ]
+        .filter(Boolean)
+        .join("\n")
+    );
+  }
+}
+
 async function run() {
   const rootPackageRaw = await fs.readFile(path.join(root, "package.json"), "utf8");
   const rootPackage = JSON.parse(rootPackageRaw);
@@ -36,6 +52,14 @@ async function run() {
     path.join(outDir, "package.json"),
     JSON.stringify(appPackage, null, 2),
     "utf8"
+  );
+
+  // Guardrail: prevent publishing a ZIP build that accidentally ships without Agent API.
+  // (We hit this once: GitHub release ZIP was built from an older main.cjs.)
+  await assertContains(
+    path.join(outDir, "electron", "main.cjs"),
+    ["AGENT_API_DEFAULT_PORT", "startAgentApiServer", "/v1/health"],
+    "Hint: ensure you are building from the commit that includes Agent API, then re-run `npm run dist:prepare` / `npm run dist:mac`."
   );
 
   console.log(`Prepared app bundle at: ${outDir}`);

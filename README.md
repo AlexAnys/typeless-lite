@@ -88,6 +88,12 @@ npm run dev
 
 ### OpenClaw Agent 接入（简短）
 
+> 实际效果：Agent 自动调用 API 拉取当日口述记录并整理日报 👇
+
+<p align="center">
+  <img src="./assets/screenshots/agent-api-demo.png" alt="Agent API 效果演示" width="80%" />
+</p>
+
 OpenClaw 是本地 AI agent，可直接调用 Typeless Lite 的本地 API，拿到某一天的 Markdown 语音记录（template）。
 
 1. 打开 `Typeless Lite.app`（会启动本地 API）。
